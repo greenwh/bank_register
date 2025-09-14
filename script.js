@@ -3,82 +3,73 @@ document.addEventListener('DOMContentLoaded', () => {
     let db;
     const request = indexedDB.open('checkbookDB', 1);
 
-    request.onerror = event => {
-        console.error('Database error:', event.target.errorCode);
-    };
-
+    request.onerror = event => console.error('Database error:', event.target.errorCode);
     request.onupgradeneeded = event => {
         db = event.target.result;
         const objectStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
         objectStore.createIndex('date', 'date', { unique: false });
         objectStore.createIndex('reconciled', 'reconciled', { unique: false });
     };
-
     request.onsuccess = event => {
         db = event.target.result;
         syncLocalStorageToIndexedDB().then(() => {
-            displayTransactions(); // Display all transactions on initial load
+            // MODIFIED: Display all transactions by default on initial load.
+            displayTransactions();
         });
     };
 
     // --- DOM ELEMENTS ---
-    const transactionList = document.getElementById('transaction-list');
     const addTransactionBtn = document.getElementById('addTransactionBtn');
-    
-    // Add Transaction Modal
     const addModal = document.getElementById('addTransactionModal');
     const addModalCloseBtn = addModal.querySelector('.close-button');
     const addTransactionForm = document.getElementById('addTransactionForm');
-    
-    // Purge Modal
     const purgeBtn = document.getElementById('purgeBtn');
     const purgeModal = document.getElementById('purgeModal');
     const purgeModalCloseBtn = purgeModal.querySelector('.close-button');
     const purgeForm = document.getElementById('purgeForm');
     const cancelPurgeBtn = purgeModal.querySelector('.cancel-btn');
-
-    // Import/Export
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
     const importFile = document.getElementById('importFile');
-
-    // Filters
     const applyFilterBtn = document.getElementById('applyFilterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
+    const sortOrderSelect = document.getElementById('sortOrder');
 
     // --- EVENT LISTENERS ---
     addTransactionBtn.onclick = () => addModal.style.display = 'block';
     addModalCloseBtn.onclick = () => addModal.style.display = 'none';
-
     purgeBtn.onclick = () => purgeModal.style.display = 'block';
     purgeModalCloseBtn.onclick = () => purgeModal.style.display = 'none';
     cancelPurgeBtn.onclick = () => purgeModal.style.display = 'none';
-
     window.onclick = event => {
         if (event.target == addModal) addModal.style.display = 'none';
         if (event.target == purgeModal) purgeModal.style.display = 'none';
     };
-
     addTransactionForm.addEventListener('submit', addTransaction);
     purgeForm.addEventListener('submit', handlePurge);
-    
     exportBtn.addEventListener('click', exportToJson);
     importBtn.addEventListener('click', () => importFile.click());
     importFile.addEventListener('change', importFromJson);
-
     applyFilterBtn.addEventListener('click', applyFilters);
     clearFilterBtn.addEventListener('click', clearFilters);
-
+    sortOrderSelect.addEventListener('change', applyFilters);
 
     // --- CORE TRANSACTION FUNCTIONS ---
 
     function addTransaction(e) {
         e.preventDefault();
+        const type = document.getElementById('transactionType').value;
+        let amount = parseFloat(document.getElementById('transactionAmount').value);
+
+        if (type === 'debit') {
+            amount = -Math.abs(amount);
+        }
+
         const newTransaction = {
             date: document.getElementById('transactionDate').value,
             description: document.getElementById('transactionDescription').value,
             category: document.getElementById('transactionCategory').value,
-            amount: parseFloat(document.getElementById('transactionAmount').value),
+            amount: amount,
             reconciled: false
         };
 
@@ -89,71 +80,67 @@ document.addEventListener('DOMContentLoaded', () => {
         request.onsuccess = () => {
             addTransactionForm.reset();
             addModal.style.display = 'none';
-            displayTransactions();
+            applyFilters();
             backupToLocalStorage();
         };
         request.onerror = (err) => console.error('Error adding transaction:', err);
     }
 
-    function displayTransactions(filters = null) {
+    function displayTransactions(filters = null, sortOrder = 'asc') {
+        const transactionList = document.getElementById('transaction-list');
         transactionList.innerHTML = '';
         const transactionStore = db.transaction('transactions', 'readonly').objectStore('transactions');
         const request = transactionStore.getAll();
 
         request.onsuccess = () => {
-            let transactions = request.result;
+            let allTransactions = request.result;
 
-            if (filters) {
-                transactions = transactions.filter(tx => {
-                    const txDate = new Date(tx.date);
-                    if (filters.startDate && txDate < filters.startDate) return false;
-                    if (filters.endDate && txDate > filters.endDate) return false;
-                    if (filters.description && !tx.description.toLowerCase().includes(filters.description)) return false;
-                    if (filters.category && !tx.category.toLowerCase().includes(filters.category)) return false;
-                    if (filters.reconciledStatus !== 'all') {
-                        const requiredStatus = filters.reconciledStatus === 'true';
-                        if (tx.reconciled !== requiredStatus) return false;
-                    }
-                    return true;
-                });
+            let filteredTransactions = filters ? allTransactions.filter(tx => {
+                const txDate = new Date(tx.date);
+                // The check `filters.startDate` ensures that if the date is cleared (null), the filter is ignored
+                if (filters.startDate && txDate < filters.startDate) return false;
+                if (filters.endDate && txDate > filters.endDate) return false;
+                if (filters.description && !tx.description.toLowerCase().includes(filters.description)) return false;
+                if (filters.category && !tx.category.toLowerCase().includes(filters.category)) return false;
+                if (filters.reconciledStatus !== 'all') {
+                    const requiredStatus = filters.reconciledStatus === 'true';
+                    if (tx.reconciled !== requiredStatus) return false;
+                }
+                return true;
+            }) : allTransactions;
+
+            filteredTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const balanceMap = new Map();
+            let currentBalance = 0;
+            for (const tx of filteredTransactions) {
+                currentBalance += tx.amount;
+                balanceMap.set(tx.id, currentBalance);
             }
 
-            transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            if (!filters) {
-                updateDatalists(transactions);
+            if (sortOrder === 'desc') {
+                filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
-
-            let runningBalance = 0;
-
-            transactions.forEach(tx => {
-                runningBalance += tx.amount;
+            
+            filteredTransactions.forEach(tx => {
                 const row = document.createElement('tr');
-
                 const cell1 = document.createElement('td');
                 const actionContainer = document.createElement('div');
                 actionContainer.className = 'action-container';
-
                 const reconcileCheck = document.createElement('input');
                 reconcileCheck.type = 'checkbox';
                 reconcileCheck.checked = tx.reconciled;
-                reconcileCheck.onchange = () => toggleReconcile(tx.id, reconcileCheck.checked); // <-- BUG FIX HERE
-
+                reconcileCheck.onchange = () => toggleReconcile(tx.id, reconcileCheck.checked);
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = 'X';
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.onclick = () => deleteTransaction(tx.id);
-
                 actionContainer.appendChild(reconcileCheck);
                 actionContainer.appendChild(deleteBtn);
-
                 const dateDiv = document.createElement('div');
                 const dateParts = tx.date.split('-').map(part => parseInt(part, 10));
                 const displayDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]));
-                dateDiv.textContent = displayDate.toLocaleDateString('en-US', {
-                    year: '2-digit', month: '2-digit', day: '2-digit', timeZone: 'UTC'
-                });
-
+                dateDiv.textContent = displayDate.toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit', timeZone: 'UTC' });
                 cell1.appendChild(actionContainer);
                 cell1.appendChild(dateDiv);
                 row.appendChild(cell1);
@@ -163,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.appendChild(cell2);
 
                 const cell3 = document.createElement('td');
+                const runningBalance = balanceMap.get(tx.id);
                 const balanceSpan = document.createElement('strong');
                 balanceSpan.className = 'running-balance';
                 balanceSpan.textContent = runningBalance.toFixed(2);
@@ -173,6 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 transactionList.appendChild(row);
             });
+
+            if (!filters) {
+                updateDatalists(allTransactions);
+            }
         };
         request.onerror = (err) => console.error('Error fetching transactions:', err);
     }
@@ -183,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const objectStore = transaction.objectStore('transactions');
         const request = objectStore.delete(id);
         request.onsuccess = () => {
-            displayTransactions();
+            applyFilters();
             backupToLocalStorage();
         };
     }
@@ -195,15 +187,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const transaction = request.result;
             transaction.reconciled = newReconciledState;
             const updateRequest = transactionStore.put(transaction);
-            updateRequest.onsuccess = () => backupToLocalStorage();
+            updateRequest.onsuccess = () => {
+                applyFilters(); 
+                backupToLocalStorage();
+            };
         };
     }
 
-    // --- FILTER AND PURGE LOGIC ---
+    // --- FILTER, SORT, AND PURGE LOGIC ---
 
     function applyFilters() {
         const startDateValue = document.getElementById('startDateFilter').value;
         const endDateValue = document.getElementById('endDateFilter').value;
+        
+        // MODIFIED: An empty date string will result in 'null', which our display function ignores.
         const filters = {
             startDate: startDateValue ? new Date(startDateValue) : null,
             endDate: endDateValue ? new Date(endDateValue) : null,
@@ -211,54 +208,54 @@ document.addEventListener('DOMContentLoaded', () => {
             category: document.getElementById('categoryFilter').value.toLowerCase(),
             reconciledStatus: document.getElementById('reconciledFilter').value
         };
-        // Adjust date filters to be inclusive
+        const sortOrder = document.getElementById('sortOrder').value;
+
+        // The UTC hours adjustment is important for correct date comparison
         if (filters.startDate) filters.startDate.setUTCHours(0, 0, 0, 0);
         if (filters.endDate) filters.endDate.setUTCHours(23, 59, 59, 999);
         
-        displayTransactions(filters);
+        displayTransactions(filters, sortOrder);
     }
     
+    // MODIFIED: This function now clears ALL filters, including dates, to show the full list.
     function clearFilters() {
         document.getElementById('startDateFilter').value = '';
         document.getElementById('endDateFilter').value = '';
         document.getElementById('descriptionFilter').value = '';
         document.getElementById('categoryFilter').value = '';
         document.getElementById('reconciledFilter').value = 'all';
-        displayTransactions();
+        document.getElementById('sortOrder').value = 'asc';
+        displayTransactions(); // Re-display with no filters
     }
 
     function handlePurge(e) {
         e.preventDefault();
         const purgeDateStr = document.getElementById('purgeDate').value;
-        if (!purgeDateStr) {
-            alert('Please select a date.');
-            return;
-        }
+        if (!purgeDateStr) return alert('Please select a date.');
         purgeModal.style.display = 'none';
         purgeReconciled(purgeDateStr);
     }
 
     function purgeReconciled(purgeDateStr) {
-        if (!confirm(`Are you sure you want to permanently delete all RECONCILED transactions on or before ${purgeDateStr}? This cannot be undone.`)) return;
-
+        if (!confirm(`Are you sure you want to permanently delete all RECONCILED transactions on or before ${purgeDateStr}?`)) return;
         const transactionStore = db.transaction('transactions', 'readwrite').objectStore('transactions');
-        const index = transactionStore.index('date');
-        const request = index.openCursor(IDBKeyRange.upperBound(purgeDateStr));
-
+        const request = transactionStore.openCursor();
         request.onsuccess = event => {
             const cursor = event.target.result;
             if (cursor) {
                 const transaction = cursor.value;
-                if (transaction.reconciled) {
+                if (transaction.reconciled && transaction.date <= purgeDateStr) {
                     cursor.delete();
                 }
                 cursor.continue();
             } else {
-                displayTransactions();
+                applyFilters();
                 backupToLocalStorage();
             }
         };
     }
+    
+    // (The setDefaultDates function has been removed)
 
     function updateDatalists(transactions) {
         const descriptionList = document.getElementById('description-list');
@@ -268,8 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         descriptionList.innerHTML = uniqueDescriptions.map(d => `<option value="${d}"></option>`).join('');
         categoryList.innerHTML = uniqueCategories.map(c => `<option value="${c}"></option>`).join('');
     }
-
-    // --- DATA BACKUP, SYNC, IMPORT/EXPORT ---
 
     function backupToLocalStorage() {
         const transaction = db.transaction(['transactions'], 'readonly');
@@ -331,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const clearRequest = transactionStore.clear();
                         clearRequest.onsuccess = () => {
                             transactions.forEach(t => transactionStore.put(t));
-                            displayTransactions();
+                            applyFilters();
                             backupToLocalStorage();
                         };
                     } catch (error) {
@@ -345,7 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
         event.target.value = null;
     }
 
-    // --- SERVICE WORKER REGISTRATION ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js')

@@ -1,12 +1,14 @@
 :root {
     --primary-color: #E6E6FA; /* Lavender */
-    --darker-lavender: #DCD0FF; /* For the header */
+    --darker-lavender: #DCD0FF;
     --light-lavender: #F5F5FF;
     --pale-lavender: #FFFFFF;
     --text-color: #333;
     --negative-balance: #D9534F;
     --danger-color: #f44336;
     --danger-hover: #da190b;
+    /* NEW: Purple color for buttons */
+    --button-purple: #9370DB; /* MediumPurple */
 }
 
 body {
@@ -22,14 +24,24 @@ header {
     margin-bottom: 1rem;
 }
 
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* MODIFIED: Button styles changed to purple and adjusted for stacking */
 .controls button {
-    background-color: #4CAF50;
+    background-color: var(--button-purple);
     color: white;
-    padding: 10px 15px;
+    padding: 8px;
     border: none;
     cursor: pointer;
-    border-radius: 5px;
-    margin: 5px;
+    border-radius: 8px;
+    min-width: 80px; /* Ensure buttons have a minimum width */
+    height: 50px;
+    line-height: 1.2; /* Adjust line height for stacked text */
 }
 
 .filter-section {
@@ -38,6 +50,11 @@ header {
     gap: 10px;
     margin-bottom: 1rem;
     align-items: center;
+}
+
+/* NEW: Narrower text inputs */
+.filter-section input[type="text"] {
+    width: 120px;
 }
 
 .table-container {
@@ -56,7 +73,15 @@ th, td {
     vertical-align: top;
 }
 
-/* Darker header style */
+/* MODIFIED: Header text alignment */
+thead th {
+    vertical-align: top;
+    font-weight: bold;
+}
+thead small {
+    font-weight: normal;
+}
+
 thead tr {
     background-color: var(--darker-lavender);
 }
@@ -77,11 +102,10 @@ tr:nth-child(even) {
     color: var(--negative-balance);
 }
 
-/* Styles for the action items (checkbox and delete button) */
 .action-container {
     display: flex;
     align-items: center;
-    gap: 12px; /* Space between checkbox and button */
+    gap: 12px;
 }
 
 input[type="checkbox"] {
@@ -95,12 +119,12 @@ input[type="checkbox"] {
     color: white;
     border: none;
     border-radius: 50%;
-    width: 22px;   /* Resized */
-    height: 22px;  /* Resized */
+    width: 22px;
+    height: 22px;
     cursor: pointer;
     font-weight: bold;
     font-size: 14px;
-    line-height: 22px; /* Vertically center the 'X' */
+    line-height: 22px;
     text-align: center;
     padding: 0;
 }
@@ -112,57 +136,40 @@ input[type="checkbox"] {
 
 /* --- Modal Styling --- */
 .modal {
-    display: none;
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4);
+    display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%;
+    overflow: auto; background-color: rgba(0,0,0,0.4);
 }
 
 .modal-content {
-    background-color: #fefefe;
-    margin: 15% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 500px;
+    background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888;
+    width: 80%; max-width: 500px;
 }
 
 .close-button {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
+    color: #aaa; float: right; font-size: 28px; font-weight: bold;
 }
 
-.close-button:hover,
-.close-button:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
+.close-button:hover, .close-button:focus {
+    color: black; text-decoration: none; cursor: pointer;
 }
 
-/* Styles for new purge modal buttons */
-.modal-buttons {
-    margin-top: 20px;
+/* NEW: Styles for the amount group in the add transaction modal */
+.amount-group {
     display: flex;
-    justify-content: flex-end;
     gap: 10px;
 }
+.amount-group select {
+    flex-basis: 150px;
+}
+.amount-group input {
+    flex-grow: 1;
+}
+
+.modal-buttons {
+    margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;
+}
 .modal-buttons button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    color: white;
+    padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; color: white;
 }
-.confirm-btn {
-    background-color: var(--danger-color);
-}
-.cancel-btn {
-    background-color: #777;
-}
+.confirm-btn { background-color: var(--danger-color); }
+.cancel-btn { background-color: #777; }

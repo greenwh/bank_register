@@ -2,34 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- MODIFIED: Added user-scalable=no to prevent zooming on mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Checkbook Register</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <!-- NEW: Icon for 'Add to Home Screen' on Apple devices -->
+    <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="theme-color" content="#E6E6FA"/>
 </head>
 <body>
     <header>
         <h1>Checkbook Register</h1>
         <div class="controls">
-            <button id="addTransactionBtn">Add Transaction</button>
-            <button id="purgeBtn">Purge Reconciled</button>
-            <button id="exportBtn">Export JSON</button>
+            <!-- MODIFIED: Added <br> for word stacking -->
+            <button id="addTransactionBtn">Add<br>Transaction</button>
+            <button id="purgeBtn">Purge<br>Reconciled</button>
+            <button id="exportBtn">Export<br>JSON</button>
             <input type="file" id="importFile" accept=".json" style="display: none;">
-            <button id="importBtn">Import JSON</button>
+            <button id="importBtn">Import<br>JSON</button>
         </div>
     </header>
 
     <main>
         <div class="filter-section">
+            <!-- Filter Inputs -->
             <input type="date" id="startDateFilter">
             <input type="date" id="endDateFilter">
-            <input type="text" id="descriptionFilter" placeholder="Filter by description...">
-            <input type="text" id="categoryFilter" placeholder="Filter by category...">
+            <input type="text" id="descriptionFilter" placeholder="Description...">
+            <input type="text" id="categoryFilter" placeholder="Category...">
             <select id="reconciledFilter">
                 <option value="all">All Statuses</option>
-                <option value="reconciled">Reconciled Only</option>
-                <option value="unreconciled">Unreconciled Only</option>
+                <option value="reconciled">Reconciled</option>
+                <option value="unreconciled">Unreconciled</option>
+            </select>
+            <!-- NEW: Sort By Dropdown -->
+            <select id="sortOrder">
+                <option value="asc">Oldest First</option>
+                <option value="desc">Newest First</option>
             </select>
             <button id="applyFilterBtn">Filter</button>
             <button id="clearFilterBtn">Clear</button>
@@ -39,9 +49,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Actions/Date</th> <!-- MODIFIED -->
-                        <th>Description/Category</th>
-                        <th>Amount/Balance</th>
+                        <!-- MODIFIED: Stacked header text -->
+                        <th>Actions<br><small>Date</small></th>
+                        <th>Description<br><small>Category</small></th>
+                        <th>Amount<br><small>Balance</small></th>
                     </tr>
                 </thead>
                 <tbody id="transaction-list">
@@ -56,19 +67,25 @@
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2>New Transaction</h2>
+            <!-- MODIFIED: Form updated for Deposit/Debit -->
             <form id="addTransactionForm">
                 <input type="date" id="transactionDate" required>
                 <input type="text" id="transactionDescription" placeholder="Description" list="description-list" required>
                 <datalist id="description-list"></datalist>
                 <input type="text" id="transactionCategory" placeholder="Category" list="category-list" required>
-                <datalist id="category-list"></datalist>
-                <input type="number" id="transactionAmount" placeholder="Amount" step="0.01" required>
+                <div class="amount-group">
+                    <select id="transactionType" required>
+                        <option value="debit">Withdrawal / Debit</option>
+                        <option value="deposit">Deposit</option>
+                    </select>
+                    <input type="number" id="transactionAmount" placeholder="Amount" step="0.01" min="0" required>
+                </div>
                 <button type="submit">Save Transaction</button>
             </form>
         </div>
     </div>
 
-    <!-- Purge Transactions Modal (NEW) -->
+    <!-- Purge Transactions Modal -->
     <div id="purgeModal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
