@@ -1,0 +1,168 @@
+:root {
+    --primary-color: #E6E6FA; /* Lavender */
+    --darker-lavender: #DCD0FF; /* For the header */
+    --light-lavender: #F5F5FF;
+    --pale-lavender: #FFFFFF;
+    --text-color: #333;
+    --negative-balance: #D9534F;
+    --danger-color: #f44336;
+    --danger-hover: #da190b;
+}
+
+body {
+    font-family: sans-serif;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 1rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.controls button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+.filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    vertical-align: top;
+}
+
+/* Darker header style */
+thead tr {
+    background-color: var(--darker-lavender);
+}
+
+tr:nth-child(odd) {
+    background-color: var(--light-lavender);
+}
+
+tr:nth-child(even) {
+    background-color: var(--pale-lavender);
+}
+
+.running-balance {
+    font-weight: bold;
+}
+
+.negative {
+    color: var(--negative-balance);
+}
+
+/* Styles for the action items (checkbox and delete button) */
+.action-container {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Space between checkbox and button */
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.delete-btn {
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 22px;   /* Resized */
+    height: 22px;  /* Resized */
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 22px; /* Vertically center the 'X' */
+    text-align: center;
+    padding: 0;
+}
+
+.delete-btn:hover {
+    background-color: var(--danger-hover);
+}
+
+
+/* --- Modal Styling --- */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Styles for new purge modal buttons */
+.modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.modal-buttons button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+}
+.confirm-btn {
+    background-color: var(--danger-color);
+}
+.cancel-btn {
+    background-color: #777;
+}

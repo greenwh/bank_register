@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkbook Register</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E6E6FA"/>
+</head>
+<body>
+    <header>
+        <h1>Checkbook Register</h1>
+        <div class="controls">
+            <button id="addTransactionBtn">Add Transaction</button>
+            <button id="purgeBtn">Purge Reconciled</button>
+            <button id="exportBtn">Export JSON</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;">
+            <button id="importBtn">Import JSON</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="filter-section">
+            <input type="date" id="startDateFilter">
+            <input type="date" id="endDateFilter">
+            <input type="text" id="descriptionFilter" placeholder="Filter by description...">
+            <input type="text" id="categoryFilter" placeholder="Filter by category...">
+            <select id="reconciledFilter">
+                <option value="all">All Statuses</option>
+                <option value="reconciled">Reconciled Only</option>
+                <option value="unreconciled">Unreconciled Only</option>
+            </select>
+            <button id="applyFilterBtn">Filter</button>
+            <button id="clearFilterBtn">Clear</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Actions/Date</th> <!-- MODIFIED -->
+                        <th>Description/Category</th>
+                        <th>Amount/Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="transaction-list">
+                    <!-- Transactions will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Add Transaction Modal -->
+    <div id="addTransactionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>New Transaction</h2>
+            <form id="addTransactionForm">
+                <input type="date" id="transactionDate" required>
+                <input type="text" id="transactionDescription" placeholder="Description" list="description-list" required>
+                <datalist id="description-list"></datalist>
+                <input type="text" id="transactionCategory" placeholder="Category" list="category-list" required>
+                <datalist id="category-list"></datalist>
+                <input type="number" id="transactionAmount" placeholder="Amount" step="0.01" required>
+                <button type="submit">Save Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Purge Transactions Modal (NEW) -->
+    <div id="purgeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Purge Reconciled Transactions</h2>
+            <p>Select a date. All reconciled transactions on or before this date will be permanently deleted.</p>
+            <form id="purgeForm">
+                <input type="date" id="purgeDate" required>
+                <div class="modal-buttons">
+                    <button type="submit" class="confirm-btn">Confirm Purge</button>
+                    <button type="button" class="cancel-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
