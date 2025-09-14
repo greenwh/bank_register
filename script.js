@@ -13,8 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     request.onsuccess = event => {
         db = event.target.result;
         syncLocalStorageToIndexedDB().then(() => {
-            // MODIFIED: Display all transactions by default on initial load.
-            displayTransactions();
+            // --- MODIFIED: LOAD SORT PREFERENCE ON STARTUP ---
+            // 1. Get the saved sort order from Local Storage, defaulting to 'asc' if not found.
+            const savedSortOrder = localStorage.getItem('checkbookSortOrder') || 'asc';
+            
+            // 2. Update the dropdown to visually match the saved preference.
+            document.getElementById('sortOrder').value = savedSortOrder;
+            
+            // 3. Load the initial transaction view using the saved preference.
+            displayTransactions(null, savedSortOrder);
         });
     };
 
@@ -97,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let filteredTransactions = filters ? allTransactions.filter(tx => {
                 const txDate = new Date(tx.date);
-                // The check `filters.startDate` ensures that if the date is cleared (null), the filter is ignored
                 if (filters.startDate && txDate < filters.startDate) return false;
                 if (filters.endDate && txDate > filters.endDate) return false;
                 if (filters.description && !tx.description.toLowerCase().includes(filters.description)) return false;
@@ -200,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const startDateValue = document.getElementById('startDateFilter').value;
         const endDateValue = document.getElementById('endDateFilter').value;
         
-        // MODIFIED: An empty date string will result in 'null', which our display function ignores.
         const filters = {
             startDate: startDateValue ? new Date(startDateValue) : null,
             endDate: endDateValue ? new Date(endDateValue) : null,
@@ -210,22 +215,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const sortOrder = document.getElementById('sortOrder').value;
 
-        // The UTC hours adjustment is important for correct date comparison
+        // --- MODIFIED: SAVE SORT PREFERENCE ---
+        // Every time the user applies a filter or changes the sort, save the choice.
+        localStorage.setItem('checkbookSortOrder', sortOrder);
+
         if (filters.startDate) filters.startDate.setUTCHours(0, 0, 0, 0);
         if (filters.endDate) filters.endDate.setUTCHours(23, 59, 59, 999);
         
         displayTransactions(filters, sortOrder);
     }
     
-    // MODIFIED: This function now clears ALL filters, including dates, to show the full list.
     function clearFilters() {
         document.getElementById('startDateFilter').value = '';
         document.getElementById('endDateFilter').value = '';
         document.getElementById('descriptionFilter').value = '';
         document.getElementById('categoryFilter').value = '';
         document.getElementById('reconciledFilter').value = 'all';
+        // When clearing, we reset the sort order visually and in Local Storage
         document.getElementById('sortOrder').value = 'asc';
-        displayTransactions(); // Re-display with no filters
+        localStorage.setItem('checkbookSortOrder', 'asc');
+        displayTransactions();
     }
 
     function handlePurge(e) {
@@ -255,8 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
-    // (The setDefaultDates function has been removed)
-
     function updateDatalists(transactions) {
         const descriptionList = document.getElementById('description-list');
         const categoryList = document.getElementById('category-list');
