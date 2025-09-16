@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- MODIFIED: Added user-scalable=no to prevent zooming on mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Checkbook Register</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <!-- NEW: Icon for 'Add to Home Screen' on Apple devices -->
     <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="theme-color" content="#E6E6FA"/>
 </head>
@@ -15,41 +13,22 @@
     <header>
         <h1>Checkbook Register</h1>
         <div class="controls">
-            <!-- MODIFIED: Added <br> for word stacking -->
-            <button id="addTransactionBtn">Add<br>Transaction</button>
-            <button id="purgeBtn">Purge<br>Reconciled</button>
-            <button id="exportBtn">Export<br>JSON</button>
+            <button id="addTransactionBtn">Add</button>
+            <button id="purgeBtn">Purge</button>
+            <button id="exportBtn">Save</button>
             <input type="file" id="importFile" accept=".json" style="display: none;">
-            <button id="importBtn">Import<br>JSON</button>
+            <button id="importBtn">Load</button>
+            <input type="file" id="importCsvFile" accept=".csv, .txt" style="display: none;">
+            <button id="importCsvBtn">CSV</button>
+            <button id="filterBtn">Filter</button>
         </div>
     </header>
 
     <main>
-        <div class="filter-section">
-            <!-- Filter Inputs -->
-            <input type="date" id="startDateFilter">
-            <input type="date" id="endDateFilter">
-            <input type="text" id="descriptionFilter" placeholder="Description...">
-            <input type="text" id="categoryFilter" placeholder="Category...">
-            <select id="reconciledFilter">
-                <option value="all">All Statuses</option>
-                <option value="reconciled">Reconciled</option>
-                <option value="unreconciled">Unreconciled</option>
-            </select>
-            <!-- NEW: Sort By Dropdown -->
-            <select id="sortOrder">
-                <option value="asc">Oldest First</option>
-                <option value="desc">Newest First</option>
-            </select>
-            <button id="applyFilterBtn">Filter</button>
-            <button id="clearFilterBtn">Clear</button>
-        </div>
-
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <!-- MODIFIED: Stacked header text -->
                         <th>Actions<br><small>Date</small></th>
                         <th>Description<br><small>Category</small></th>
                         <th>Amount<br><small>Balance</small></th>
@@ -64,10 +43,10 @@
 
     <!-- Add Transaction Modal -->
     <div id="addTransactionModal" class="modal">
+        <!-- ... (content is the same) ... -->
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2>New Transaction</h2>
-            <!-- MODIFIED: Form updated for Deposit/Debit -->
             <form id="addTransactionForm">
                 <input type="date" id="transactionDate" required>
                 <input type="text" id="transactionDescription" placeholder="Description" list="description-list" required>
@@ -87,6 +66,7 @@
 
     <!-- Purge Transactions Modal -->
     <div id="purgeModal" class="modal">
+        <!-- ... (content is the same) ... -->
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2>Purge Reconciled Transactions</h2>
@@ -98,6 +78,64 @@
                     <button type="button" class="cancel-btn">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- CSV Import Preview Modal -->
+    <div id="importPreviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Import Preview</h2>
+            <p>We found <strong id="import-count">0</strong> new transactions. Does this look correct?</p>
+            <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="import-preview-list"></tbody>
+                </table>
+            </div>
+            
+            <!-- NEW: Checkbox option for reconciling -->
+            <div class="import-options">
+                <input type="checkbox" id="markAsReconciled">
+                <label for="markAsReconciled">Mark imported transactions as reconciled</label>
+            </div>
+
+            <div class="modal-buttons">
+                <button id="confirmImportBtn" class="confirm-btn">Confirm Import</button>
+                <button id="cancelImportBtn" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Modal -->
+    <div id="filterModal" class="modal">
+        <!-- ... (content is the same) ... -->
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Filter & Sort Transactions</h2>
+            <div class="filter-section">
+                <input type="date" id="startDateFilter">
+                <input type="date" id="endDateFilter">
+                <input type="text" id="descriptionFilter" placeholder="Description...">
+                <input type="text" id="categoryFilter" placeholder="Category...">
+                <select id="reconciledFilter">
+                    <option value="all">All Statuses</option>
+                    <option value="reconciled">Reconciled</option>
+                    <option value="unreconciled">Unreconciled</option>
+                </select>
+                <select id="sortOrder">
+                    <option value="asc">Oldest First</option>
+                    <option value="desc">Newest First</option>
+                </select>
+                <button id="applyFilterBtn">Apply Filters</button>
+                <button id="clearFilterBtn">Clear Filters</button>
+            </div>
         </div>
     </div>
 

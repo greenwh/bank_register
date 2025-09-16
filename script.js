@@ -6,21 +6,22 @@ document.addEventListener('DOMContentLoaded', () => {
     request.onerror = event => console.error('Database error:', event.target.errorCode);
     request.onupgradeneeded = event => {
         db = event.target.result;
-        const objectStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
-        objectStore.createIndex('date', 'date', { unique: false });
-        objectStore.createIndex('reconciled', 'reconciled', { unique: false });
+        const objectStore = db.createObjectStore('transactions', {
+            keyPath: 'id',
+            autoIncrement: true
+        });
+        objectStore.createIndex('date', 'date', {
+            unique: false
+        });
+        objectStore.createIndex('reconciled', 'reconciled', {
+            unique: false
+        });
     };
     request.onsuccess = event => {
         db = event.target.result;
         syncLocalStorageToIndexedDB().then(() => {
-            // --- MODIFIED: LOAD SORT PREFERENCE ON STARTUP ---
-            // 1. Get the saved sort order from Local Storage, defaulting to 'asc' if not found.
             const savedSortOrder = localStorage.getItem('checkbookSortOrder') || 'asc';
-            
-            // 2. Update the dropdown to visually match the saved preference.
             document.getElementById('sortOrder').value = savedSortOrder;
-            
-            // 3. Load the initial transaction view using the saved preference.
             displayTransactions(null, savedSortOrder);
         });
     };
@@ -38,9 +39,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
     const importFile = document.getElementById('importFile');
+    const sortOrderSelect = document.getElementById('sortOrder');
+    const filterBtn = document.getElementById('filterBtn');
+    const filterModal = document.getElementById('filterModal');
+    const filterModalCloseBtn = filterModal.querySelector('.close-button');
     const applyFilterBtn = document.getElementById('applyFilterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
-    const sortOrderSelect = document.getElementById('sortOrder');
+    const importCsvBtn = document.getElementById('importCsvBtn');
+    const importCsvFile = document.getElementById('importCsvFile');
+    const importPreviewModal = document.getElementById('importPreviewModal');
+    const confirmImportBtn = document.getElementById('confirmImportBtn');
+    const cancelImportBtn = document.getElementById('cancelImportBtn');
+    const importPreviewList = document.getElementById('import-preview-list');
+    const importCount = document.getElementById('import-count');
 
     // --- EVENT LISTENERS ---
     addTransactionBtn.onclick = () => addModal.style.display = 'block';
@@ -48,30 +59,42 @@ document.addEventListener('DOMContentLoaded', () => {
     purgeBtn.onclick = () => purgeModal.style.display = 'block';
     purgeModalCloseBtn.onclick = () => purgeModal.style.display = 'none';
     cancelPurgeBtn.onclick = () => purgeModal.style.display = 'none';
+    filterBtn.onclick = () => filterModal.style.display = 'block';
+    filterModalCloseBtn.onclick = () => filterModal.style.display = 'none';
+
     window.onclick = event => {
         if (event.target == addModal) addModal.style.display = 'none';
         if (event.target == purgeModal) purgeModal.style.display = 'none';
+        if (event.target == importPreviewModal) importPreviewModal.style.display = 'none';
+        if (event.target == filterModal) filterModal.style.display = 'none';
     };
+
     addTransactionForm.addEventListener('submit', addTransaction);
     purgeForm.addEventListener('submit', handlePurge);
     exportBtn.addEventListener('click', exportToJson);
     importBtn.addEventListener('click', () => importFile.click());
     importFile.addEventListener('change', importFromJson);
-    applyFilterBtn.addEventListener('click', applyFilters);
+
+    applyFilterBtn.addEventListener('click', () => {
+        applyFilters();
+        filterModal.style.display = 'none';
+    });
+
     clearFilterBtn.addEventListener('click', clearFilters);
     sortOrderSelect.addEventListener('change', applyFilters);
+    importCsvBtn.addEventListener('click', () => importCsvFile.click());
+    importCsvFile.addEventListener('change', handleCsvImport);
+    cancelImportBtn.onclick = () => importPreviewModal.style.display = 'none';
+    importPreviewModal.querySelector('.close-button').onclick = () => importPreviewModal.style.display = 'none';
 
     // --- CORE TRANSACTION FUNCTIONS ---
-
     function addTransaction(e) {
         e.preventDefault();
         const type = document.getElementById('transactionType').value;
         let amount = parseFloat(document.getElementById('transactionAmount').value);
-
         if (type === 'debit') {
             amount = -Math.abs(amount);
         }
-
         const newTransaction = {
             date: document.getElementById('transactionDate').value,
             description: document.getElementById('transactionDescription').value,
@@ -79,11 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
             amount: amount,
             reconciled: false
         };
-
         const transaction = db.transaction(['transactions'], 'readwrite');
         const objectStore = transaction.objectStore('transactions');
         const request = objectStore.add(newTransaction);
-
         request.onsuccess = () => {
             addTransactionForm.reset();
             addModal.style.display = 'none';
@@ -98,10 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
         transactionList.innerHTML = '';
         const transactionStore = db.transaction('transactions', 'readonly').objectStore('transactions');
         const request = transactionStore.getAll();
-
         request.onsuccess = () => {
             let allTransactions = request.result;
-
             let filteredTransactions = filters ? allTransactions.filter(tx => {
                 const txDate = new Date(tx.date);
                 if (filters.startDate && txDate < filters.startDate) return false;
@@ -114,20 +133,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 return true;
             }) : allTransactions;
-
             filteredTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
             const balanceMap = new Map();
             let currentBalance = 0;
             for (const tx of filteredTransactions) {
                 currentBalance += tx.amount;
                 balanceMap.set(tx.id, currentBalance);
             }
-
             if (sortOrder === 'desc') {
                 filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
-            
             filteredTransactions.forEach(tx => {
                 const row = document.createElement('tr');
                 const cell1 = document.createElement('td');
@@ -146,15 +161,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateDiv = document.createElement('div');
                 const dateParts = tx.date.split('-').map(part => parseInt(part, 10));
                 const displayDate = new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2]));
-                dateDiv.textContent = displayDate.toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit', timeZone: 'UTC' });
+                dateDiv.textContent = displayDate.toLocaleDateString('en-US', {
+                    year: '2-digit',
+                    month: '2-digit',
+                    day: '2-digit',
+                    timeZone: 'UTC'
+                });
                 cell1.appendChild(actionContainer);
                 cell1.appendChild(dateDiv);
                 row.appendChild(cell1);
-
                 const cell2 = document.createElement('td');
                 cell2.innerHTML = `${tx.description}<br><small><em>${tx.category}</em></small>`;
                 row.appendChild(cell2);
-
                 const cell3 = document.createElement('td');
                 const runningBalance = balanceMap.get(tx.id);
                 const balanceSpan = document.createElement('strong');
@@ -164,10 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell3.innerHTML = `${tx.amount.toFixed(2)}<br>`;
                 cell3.appendChild(balanceSpan);
                 row.appendChild(cell3);
-
                 transactionList.appendChild(row);
             });
-
             if (!filters) {
                 updateDatalists(allTransactions);
             }
@@ -194,18 +210,16 @@ document.addEventListener('DOMContentLoaded', () => {
             transaction.reconciled = newReconciledState;
             const updateRequest = transactionStore.put(transaction);
             updateRequest.onsuccess = () => {
-                applyFilters(); 
+                applyFilters();
                 backupToLocalStorage();
             };
         };
     }
 
     // --- FILTER, SORT, AND PURGE LOGIC ---
-
     function applyFilters() {
         const startDateValue = document.getElementById('startDateFilter').value;
         const endDateValue = document.getElementById('endDateFilter').value;
-        
         const filters = {
             startDate: startDateValue ? new Date(startDateValue) : null,
             endDate: endDateValue ? new Date(endDateValue) : null,
@@ -214,24 +228,18 @@ document.addEventListener('DOMContentLoaded', () => {
             reconciledStatus: document.getElementById('reconciledFilter').value
         };
         const sortOrder = document.getElementById('sortOrder').value;
-
-        // --- MODIFIED: SAVE SORT PREFERENCE ---
-        // Every time the user applies a filter or changes the sort, save the choice.
         localStorage.setItem('checkbookSortOrder', sortOrder);
-
         if (filters.startDate) filters.startDate.setUTCHours(0, 0, 0, 0);
         if (filters.endDate) filters.endDate.setUTCHours(23, 59, 59, 999);
-        
         displayTransactions(filters, sortOrder);
     }
-    
+
     function clearFilters() {
         document.getElementById('startDateFilter').value = '';
         document.getElementById('endDateFilter').value = '';
         document.getElementById('descriptionFilter').value = '';
         document.getElementById('categoryFilter').value = '';
         document.getElementById('reconciledFilter').value = 'all';
-        // When clearing, we reset the sort order visually and in Local Storage
         document.getElementById('sortOrder').value = 'asc';
         localStorage.setItem('checkbookSortOrder', 'asc');
         displayTransactions();
@@ -263,7 +271,161 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-    
+
+    // --- CSV IMPORT SYSTEM ---
+    function robustSplit(line) {
+        const columns = [];
+        let currentColumn = '';
+        let inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+            if (char === '"' && (i === 0 || line[i - 1] === ',')) {
+                if (!inQuote) {
+                    inQuote = true;
+                    continue;
+                }
+            }
+            if (char === '"' && (nextChar === ',' || nextChar === undefined || nextChar === '\r')) {
+                if (inQuote) {
+                    inQuote = false;
+                    continue;
+                }
+            }
+            if (char === ',' && !inQuote) {
+                columns.push(currentColumn);
+                currentColumn = '';
+            } else {
+                currentColumn += char;
+            }
+        }
+        columns.push(currentColumn.trim());
+        return columns;
+    }
+
+    const csvParserProfiles = [{
+        name: 'Bank Format 1 (Credit/Debit Columns)',
+        header_signature: 'Account,Date,Pending?,Description,Category,Check,Credit,Debit',
+        columns: {
+            date: 1,
+            description: 3,
+            category: 4,
+            credit: 6,
+            debit: 7
+        },
+        processAmount: (row) => {
+            const credit = parseFloat(row[6]) || 0;
+            const debit = parseFloat(row[7]) || 0;
+            return credit + debit;
+        }
+    }, {
+        name: 'Bank Format 2 (Single Amount Column)',
+        header_signature: 'Date,Description,Original Description,Category,Amount,Status',
+        columns: {
+            date: 0,
+            description: 1,
+            category: 3,
+            amount: 4
+        },
+        processAmount: (row) => {
+            return parseFloat(row[4]);
+        }
+    }];
+
+    function handleCsvImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => parseBankCsv(e.target.result);
+        reader.readAsText(file);
+        event.target.value = null;
+    }
+
+    function parseBankCsv(csvText) {
+        const lines = csvText.split('\n').filter(line => line.trim());
+        if (lines.length < 2) return alert('CSV file is empty or invalid.');
+        const header = lines[0];
+        const dataRows = lines.slice(1);
+        const profile = csvParserProfiles.find(p => p.header_signature.split(',').every(col => header.includes(col)));
+        if (!profile) {
+            return alert('Could not recognize this CSV format. Please ensure the header row is correct.');
+        }
+        const transactionStore = db.transaction('transactions', 'readonly').objectStore('transactions');
+        const request = transactionStore.getAll();
+        request.onsuccess = () => {
+            const existingTransactions = request.result;
+            const newTransactions = [];
+            dataRows.forEach(line => {
+                const columns = robustSplit(line);
+                if (!columns || columns.length < 5) return;
+                try {
+                    const date = new Date(columns[profile.columns.date]).toISOString().slice(0, 10);
+                    const description = columns[profile.columns.description].trim();
+                    const amount = profile.processAmount(columns);
+                    const category = columns[profile.columns.category] || 'Uncategorized';
+                    if (isNaN(amount)) return;
+                    const isDuplicate = existingTransactions.some(tx =>
+                        tx.date === date && tx.description === description && tx.amount === amount
+                    );
+                    if (!isDuplicate) {
+                        newTransactions.push({
+                            date,
+                            description,
+                            category,
+                            amount,
+                            reconciled: false
+                        });
+                    }
+                } catch (error) {
+                    console.warn("Skipped a row due to parsing error:", error, line);
+                }
+            });
+            if (newTransactions.length > 0) {
+                displayImportPreview(newTransactions);
+            } else {
+                alert('No new transactions found to import.');
+            }
+        };
+    }
+
+    function displayImportPreview(transactions) {
+        importPreviewList.innerHTML = '';
+        importCount.textContent = transactions.length;
+        document.getElementById('markAsReconciled').checked = false; // Reset checkbox
+
+        transactions.forEach(tx => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${tx.date}</td><td>${tx.description}</td><td class="${tx.amount < 0 ? 'negative' : ''}">${tx.amount.toFixed(2)}</td>`;
+            importPreviewList.appendChild(row);
+        });
+
+        confirmImportBtn.onclick = () => {
+            const shouldMarkAsReconciled = document.getElementById('markAsReconciled').checked;
+            saveImportedTransactions(transactions, shouldMarkAsReconciled);
+        };
+        importPreviewModal.style.display = 'block';
+    }
+
+    function saveImportedTransactions(transactionsToSave, markAsReconciled) {
+        const transaction = db.transaction(['transactions'], 'readwrite');
+        const objectStore = transaction.objectStore('transactions');
+        transactionsToSave.forEach(tx => {
+            tx.reconciled = markAsReconciled; // Set the reconciled status based on the checkbox
+            objectStore.add(tx);
+        });
+        transaction.oncomplete = () => {
+            importPreviewModal.style.display = 'none';
+            alert(`${transactionsToSave.length} transactions imported successfully!`);
+            applyFilters();
+            backupToLocalStorage();
+        };
+        transaction.onerror = (err) => {
+            console.error("Error saving imported transactions:", err);
+            alert("An error occurred while saving the transactions.");
+        };
+    }
+
+    // --- DATA UTILITIES & SERVICE WORKER ---
     function updateDatalists(transactions) {
         const descriptionList = document.getElementById('description-list');
         const categoryList = document.getElementById('category-list');
@@ -289,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const transactions = JSON.parse(backup);
                     const transactionStore = db.transaction(['transactions'], 'readwrite').objectStore('transactions');
-                    const clearRequest = transactionStore.clear(); 
+                    const clearRequest = transactionStore.clear();
                     clearRequest.onsuccess = () => {
                         transactions.forEach(t => transactionStore.put(t));
                         resolve();
@@ -311,7 +473,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const request = objectStore.getAll();
         request.onsuccess = () => {
             const data = JSON.stringify(request.result, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
+            const blob = new Blob([data], {
+                type: 'application/json'
+            });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -326,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (file) {
             const reader = new FileReader();
             reader.onload = e => {
-                if(confirm('This will overwrite all current transactions. Are you sure you want to import this file?')) {
+                if (confirm('This will overwrite all current transactions. Are you sure you want to import this file?')) {
                     try {
                         const transactions = JSON.parse(e.target.result);
                         const transactionStore = db.transaction(['transactions'], 'readwrite').objectStore('transactions');

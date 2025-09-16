@@ -7,7 +7,6 @@
     --negative-balance: #D9534F;
     --danger-color: #f44336;
     --danger-hover: #da190b;
-    /* NEW: Purple color for buttons */
     --button-purple: #9370DB; /* MediumPurple */
 }
 
@@ -31,7 +30,6 @@ header {
     flex-wrap: wrap;
 }
 
-/* MODIFIED: Button styles changed to purple and adjusted for stacking */
 .controls button {
     background-color: var(--button-purple);
     color: white;
@@ -39,22 +37,23 @@ header {
     border: none;
     cursor: pointer;
     border-radius: 8px;
-    min-width: 80px; /* Ensure buttons have a minimum width */
-    height: 50px;
-    line-height: 1.2; /* Adjust line height for stacked text */
+    min-width: 30px;
+    height: 20px;
+    line-height: .3;
+    font-size: 14px;
+    text-align: center;
+}
+
+#importCsvBtn {
+    background-color: var(--button-purple);
 }
 
 .filter-section {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: column;
+    gap: 12px;
     margin-bottom: 1rem;
-    align-items: center;
-}
-
-/* NEW: Narrower text inputs */
-.filter-section input[type="text"] {
-    width: 120px;
+    align-items: stretch;
 }
 
 .table-container {
@@ -73,7 +72,6 @@ th, td {
     vertical-align: top;
 }
 
-/* MODIFIED: Header text alignment */
 thead th {
     vertical-align: top;
     font-weight: bold;
@@ -141,8 +139,8 @@ input[type="checkbox"] {
 }
 
 .modal-content {
-    background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888;
-    width: 80%; max-width: 500px;
+    background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888;
+    width: 90%; max-width: 500px;
 }
 
 .close-button {
@@ -153,7 +151,6 @@ input[type="checkbox"] {
     color: black; text-decoration: none; cursor: pointer;
 }
 
-/* NEW: Styles for the amount group in the add transaction modal */
 .amount-group {
     display: flex;
     gap: 10px;
@@ -173,3 +170,17 @@ input[type="checkbox"] {
 }
 .confirm-btn { background-color: var(--danger-color); }
 .cancel-btn { background-color: #777; }
+
+/* NEW STYLE for the import options checkbox */
+.import-options {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.import-options label {
+    cursor: pointer;
+}
